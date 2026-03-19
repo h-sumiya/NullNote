@@ -53,6 +53,34 @@ jobs:
         shell: pwsh
         run: cpack --config build/CPackConfig.cmake -C Release
 
+      - name: Validate ZIP contents
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+          $zipName = "NullNote-${{ steps.version.outputs.package_version }}-windows-x64.zip"
+          $zipPath = Join-Path $PWD $zipName
+          if (-not (Test-Path $zipPath)) {
+            throw "Package ZIP was not created: $zipName"
+          }
+
+          $expectedEntry = "NullNote-${{ steps.version.outputs.package_version }}-windows-x64/NullNote.exe"
+          $legacyEntry = "NullNote-${{ steps.version.outputs.package_version }}-windows-x64/bin/NullNote.exe"
+
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+          try {
+            $entries = $zip.Entries.FullName
+            if ($entries -notcontains $expectedEntry) {
+              throw "Expected packaged executable at archive root: $expectedEntry"
+            }
+            if ($entries -contains $legacyEntry) {
+              throw "Packaged executable is still nested under bin/: $legacyEntry"
+            }
+          }
+          finally {
+            $zip.Dispose()
+          }
+
       - name: Resolve ZIP path
         id: package
         shell: pwsh

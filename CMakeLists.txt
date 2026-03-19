@@ -6,6 +6,10 @@ endif()
 
 project(NullNote VERSION ${NULLNOTE_VERSION} LANGUAGES CXX)
 
+if(WIN32)
+    set(CMAKE_INSTALL_BINDIR "." CACHE STRING "Install path for runtime binaries" FORCE)
+endif()
+
 include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 17)
