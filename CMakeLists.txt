@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 if(NOT DEFINED NULLNOTE_VERSION)
-    set(NULLNOTE_VERSION 0.1.0)
+    set(NULLNOTE_VERSION 0.1.1)
 endif()
 
 project(NullNote VERSION ${NULLNOTE_VERSION} LANGUAGES CXX)
