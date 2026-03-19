@@ -1,0 +1,87 @@
+name: release-zip
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-2022
+    env:
+      QT_VERSION: 6.7.2
+      QT_ARCH: win64_msvc2019_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}" -replace '^v', ''
+          if (-not $version) {
+            throw "Failed to extract package version from tag ${env:GITHUB_REF_NAME}"
+          }
+          "package_version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: ${{ env.QT_ARCH }}
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022"
+          -A x64
+          -DNULLNOTE_VERSION="${{ steps.version.outputs.package_version }}"
+          -DCMAKE_PREFIX_PATH="${env:QT_ROOT_DIR}"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Package ZIP
+        shell: pwsh
+        run: cpack --config build/CPackConfig.cmake -C Release
+
+      - name: Resolve ZIP path
+        id: package
+        shell: pwsh
+        run: |
+          $zipName = "NullNote-${{ steps.version.outputs.package_version }}-windows-x64.zip"
+          $zip = Join-Path $PWD $zipName
+          if (-not (Test-Path $zip)) {
+            throw "Package ZIP was not created: $zipName"
+          }
+          "zip_path=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "zip_name=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zip_name }}
+          path: ${{ steps.package.outputs.zip_path }}
+
+      - name: Publish release asset
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${env:GITHUB_REF_NAME}"
+          $zip = "${{ steps.package.outputs.zip_path }}"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zip --clobber
+          } else {
+            gh release create $tag $zip --title $tag --generate-notes
+          }
