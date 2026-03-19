@@ -1,0 +1,5 @@
+build/
+cmake-build-*/
+.vs/
+
+mise.local.toml

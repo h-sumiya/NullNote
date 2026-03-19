@@ -1,0 +1,10 @@
+[tasks.configure]
+run_windows = 'cmake -S . -B build -DCMAKE_PREFIX_PATH="C:\Qt\6.7.2\msvc2019_64"'
+
+[tasks.build]
+depends = ["configure"]
+run_windows = "cmake --build build --config Release"
+
+[tasks.copyDLL]
+depends = ["build"]
+run_windows = "windeployqt.exe PATH_TO_NULLNOTE_EXE"
